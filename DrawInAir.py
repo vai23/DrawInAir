@@ -99,7 +99,7 @@ def changeStylus(vid):
 
         image = cv2.flip(frame, 1)
         st = 'Put stylus color inside rectangle and press "s" to save it and "d" to discard it'
-        cv2.putText(image, st, (20, 80), cv2.FONT_HERSHEY_COMPLEX, 1, color.white)
+        cv2.putText(image, st, (20, 80), cv2.FONT_HERSHEY_COMPLEX, 0.9, color.white)
         cv2.rectangle(image, (500, 300), (525, 325), color.green, 1)
 
         cv2.imshow('Image', image)
@@ -202,6 +202,7 @@ def main():
 
         cv2.imshow('Image', image)
         # cv2.imshow('Extract', extract)
+
         key = cv2.waitKey(1)
 
         if key == ord('q'):
