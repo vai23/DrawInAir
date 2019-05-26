@@ -2,9 +2,11 @@ import cv2
 import numpy as np
 from collections import deque, namedtuple
 
-color = namedtuple('color', ['red', 'green', 'blue', 'lblue', 'white'])
-color = color([0, 0, 255], [0, 255, 0], [255, 0, 0], [255, 102, 102], [255, 255, 255])
+color = namedtuple('color', ['red', 'green', 'blue', 'lblue', 'white', 'purple'])
+color = color([0, 0, 255], [0, 255, 0], [255, 0, 0], [255, 102, 102], [255, 255, 255], [255, 102, 153])
 points = [deque([deque(maxlen=1024)]), deque([deque(maxlen=1024)]), deque([deque(maxlen=1024)])]
+lowers = None
+uppers = None
 
 
 def drawOptions(image):
@@ -28,6 +30,12 @@ def drawOptions(image):
     cv2.putText(blue, 'Blue', (30, 55), cv2.FONT_HERSHEY_COMPLEX, 0.5, color.white)
     image[0:100, 300:400] = blue
 
+    changeStylus = np.zeros(shape, np.uint8) + color.purple
+    cv2.putText(changeStylus, 'Change', (20, 45), cv2.FONT_HERSHEY_COMPLEX, 0.5, color.white)
+    cv2.putText(changeStylus, 'Stylus', (25, 65), cv2.FONT_HERSHEY_COMPLEX, 0.5, color.white)
+    cv2.putText(changeStylus, 'Press "c" to change', (2, 80), cv2.FONT_HERSHEY_COMPLEX, 0.28, color.white)
+    image[0:100, 400:500] = changeStylus
+
     return
 
 
@@ -45,16 +53,83 @@ def getOption(point):
             return 2
         elif 300 < x <= 400:
             return 3
+        elif 400 < x <= 500:
+            return 5
         else:
             return 4
 
 
+def loadROI():
+    global lowers, uppers
+
+    roi = np.load('roi.npy')
+
+    total = [0, 0, 0]
+    for i in roi:
+        for j in i:
+            total += j
+
+    total = total / (roi.shape[0] * roi.shape[1])
+    total = np.array(total, np.uint8)
+    total = np.expand_dims(np.expand_dims(total, 0), 0)
+    total = cv2.cvtColor(total, cv2.COLOR_BGR2HSV)
+
+    up = lo = int(total[0][0][0])
+    lo = 0 if lo < 10 else (lo - 10)
+    up = 255 if up > 245 else (up + 10)
+
+    lowers = np.array([lo, 100, 100], np.uint8)
+    uppers = np.array([up, 255, 255], np.uint8)
+
+    return
+
+
+def changeStylus(vid):
+    global color
+
+    cv2.destroyAllWindows()
+
+    roi = None
+
+    while (True):
+        ret, frame = vid.read()
+
+        if not ret:
+            break
+
+        image = cv2.flip(frame, 1)
+        st = 'Put stylus color inside rectangle and press "s" to save it and "d" to discard it'
+        cv2.putText(image, st, (20, 80), cv2.FONT_HERSHEY_COMPLEX, 1, color.white)
+        cv2.rectangle(image, (500, 300), (525, 325), color.green, 1)
+
+        cv2.imshow('Image', image)
+
+        key = cv2.waitKey(1)
+
+        if key == ord('q'):
+            break
+        elif key == ord('d'):
+            roi = None
+            break
+        elif key == ord('s'):
+            roi = image[301:325, 501:525]
+            # cv2.imshow('ROI', roi)
+    cv2.destroyAllWindows()
+
+    if roi is not None:
+        np.save('roi.npy', roi)
+        loadROI()
+    return
+
+
 def main():
-    global color, points
-    
+    global color, points, lowers, uppers
+
+    loadROI()
+
     colorId = 1  # green
     paintWindow = None
-    
+
     vid = cv2.VideoCapture(0)
 
     vid.set(3, 1920)
@@ -73,8 +148,6 @@ def main():
         drawOptions(image)
 
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        lowers = np.uint8([96, 100, 100])
-        uppers = np.uint8([116, 255, 255])
         extract = cv2.inRange(hsv, lowerb=lowers, upperb=uppers)
 
         if paintWindow is None:
@@ -109,6 +182,8 @@ def main():
                 colorId = 1
             elif option == 3:
                 colorId = 2
+            elif option == 5:
+                changeStylus(vid)
 
             if radius > 1:
                 points[colorId][0].appendleft(center)
@@ -131,8 +206,11 @@ def main():
 
         if key == ord('q'):
             break
+        elif key == ord('c'):
+            changeStylus(vid)
 
     vid.release()
     cv2.destroyAllWindows()
+
 
 main()
