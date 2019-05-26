@@ -7,10 +7,11 @@ color = color([0, 0, 255], [0, 255, 0], [255, 0, 0], [255, 102, 102], [255, 255,
 points = [deque([deque(maxlen=1024)]), deque([deque(maxlen=1024)]), deque([deque(maxlen=1024)])]
 lowers = None
 uppers = None
+shapeId = 0  # line
 
 
 def drawOptions(image):
-    global color
+    global color, shapeId
 
     shape = (100, 100, 3)
 
@@ -35,6 +36,15 @@ def drawOptions(image):
     cv2.putText(changeStylus, 'Stylus', (25, 65), cv2.FONT_HERSHEY_COMPLEX, 0.5, color.white)
     cv2.putText(changeStylus, 'Press "c" to change', (2, 80), cv2.FONT_HERSHEY_COMPLEX, 0.28, color.white)
     image[0:100, 400:500] = changeStylus
+
+    width = 2
+    shapeRect = np.zeros((shape[0] - width * 2, shape[1] - width * 2, shape[2]), np.uint8)
+    shapeRect = cv2.copyMakeBorder(shapeRect, width, width, width, width, cv2.BORDER_CONSTANT, value=color.lblue)
+    if shapeId == 0:
+        cv2.circle(shapeRect, (50, 50), 40, color.lblue, width, cv2.LINE_AA)
+    else:
+        cv2.line(shapeRect, (20, 80), (80, 20), color.lblue, width, cv2.LINE_AA)
+    image[0:100, 500:600] = shapeRect
 
     return
 
@@ -123,9 +133,9 @@ def changeStylus(vid):
 
 
 def main():
-    global color, points, lowers, uppers
+    global color, points, lowers, uppers, shapeId
 
-    loadROI()
+    loadROI()  # loading saves stylus
 
     colorId = 1  # green
     paintWindow = None
